@@ -10,3 +10,5 @@
   text-decoration: none;
 }
 .live-chat-link:hover { text-decoration: underline; }
+
+.startup-status { padding: 1.5rem; font-size: 0.9rem; }

@@ -46,6 +46,8 @@ CAPPI status → open items → PDF brief → DRATF progress → BOQ review → 
 
 ## GitHub Pages
 
+On a normal GitHub Pages visit, the site checks whether the hosted API is configured and opens the hosted chat when available. Use [guided mode](https://mervyn15.github.io/nnic-assist/?mode=guided) to stay with the scripted walkthrough. Opening the downloaded HTML file directly always starts offline.
+
 The root `index.html` is the self-contained website entry point. `npm run build` updates both `index.html` and `NNIC-Assist-Offline.html`.
 
 To publish when Pages is available for this repository: open Settings > Pages, choose Deploy from a branch, and select `main` with `/ (root)`. The site needs no API key or backend.

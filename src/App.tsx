@@ -4,7 +4,7 @@ import {ArrowUp,ArrowUpRight,Plus,MessageSquare,BookOpen,FolderOpen,Settings2,Pa
 import {prompts} from './lib/demo';
 import {script,guidedReply} from './lib/guided';
 import {pdfUrl} from './pdf-assets';
-const hostedLiveChatUrl = 'https://nnic-assist.mervyn27.chatgpt.site/?mode=live';
+import {hostedLiveChatUrl} from './lib/hosted-chat';
 
 function LiveChatLink() {
   return (
