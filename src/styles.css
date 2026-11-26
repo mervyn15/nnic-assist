@@ -12,3 +12,5 @@
 .live-chat-link:hover { text-decoration: underline; }
 
 .startup-status { padding: 1.5rem; font-size: 0.9rem; }
+
+.status-pill.mode-switch{text-decoration:none}.status-pill.mode-switch:hover{border-color:#ad777e}
