@@ -8,3 +8,6 @@ const js=r.outputFiles[0].text.replace(/<\/script/gi,'<\\/script');
 const css=await readFile('src/styles.css','utf8');
 await writeFile('NNIC-Assist-Offline.html',`<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>NNIC Assist | Offline</title><style>${css}</style></head><body><div id="root"></div><script>${js}</script></body></html>`);
 console.log('Built NNIC-Assist-Offline.html with embedded PDFs.');
+
+await writeFile('index.html', await readFile('NNIC-Assist-Offline.html'));
+console.log('Built index.html for GitHub Pages.');

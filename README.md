@@ -43,3 +43,9 @@ The live hosted site remains at https://nnic-assist.mervyn27.chatgpt.site. This 
 ## Presentation flow
 
 CAPPI status → open items → PDF brief → DRATF progress → BOQ review → PDF brief → A-SMGCS review → vendor evidence → PDF brief.
+
+## GitHub Pages
+
+The root `index.html` is the self-contained website entry point. `npm run build` updates both `index.html` and `NNIC-Assist-Offline.html`.
+
+To publish when Pages is available for this repository: open Settings > Pages, choose Deploy from a branch, and select `main` with `/ (root)`. The site needs no API key or backend.
