@@ -49,3 +49,5 @@ CAPPI status → open items → PDF brief → DRATF progress → BOQ review → 
 The root `index.html` is the self-contained website entry point. `npm run build` updates both `index.html` and `NNIC-Assist-Offline.html`.
 
 To publish when Pages is available for this repository: open Settings > Pages, choose Deploy from a branch, and select `main` with `/ (root)`. The site needs no API key or backend.
+
+Fonts (DM Sans and Manrope) are embedded for offline use under the SIL Open Font License. See `licenses/`. The build checks CSS syntax and rejects external stylesheet dependencies.
