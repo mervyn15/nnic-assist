@@ -20,7 +20,7 @@ Guided history is saved locally in this browser where supported. Browsers may re
 
 On GitHub Pages, Live AI uses the workspace login, shared CAAP Works references and shared request allowance. The backend keeps the OpenAI key and handles model calls. The live session and its conversations stay in tab memory and clear on refresh, sign-out, or tab close. The offline guided walkthrough includes prepared responses and PDF briefs.
 
-The guided chat also answers short public questions about CAAP and common aviation terms. It includes clickable official references and supports follow-up questions about air navigation and pilot licensing. Other questions receive a few relevant conversation options. The hosted Live AI can check public web sources. For a follow-up, the conversation remembers the last recognized project until you change topics.
+The guided chat also answers short public questions about CAAP and common aviation terms. It includes clickable official references and supports follow-up questions about air navigation and pilot licensing. Other questions receive a few relevant conversation options. In Live AI on either site, a factual question checks the shared workspace references first. If they cannot support an answer, the chat says so and tries a brief public web search. Click a numbered citation to open its source. You can also ask directly for a web lookup. An unfamiliar topic may use one model request to prepare the search and another to run it. Private reference passages stay out of web searches, and a public page cannot establish an unpublished project decision.
 
 ## Edit and rebuild (developers)
 
