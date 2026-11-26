@@ -1,6 +1,6 @@
 # NNIC Assist
 
-An offline edition of the NNIC Assist guided conversation demo. It contains the CAPPI, DRATF refurbishment, and A-SMGCS walkthroughs, progressive responses, local chat history, and three formatted PDF briefs.
+NNIC Assist provides Live AI directly on GitHub Pages and a guided conversation demo that also runs offline. It contains the CAPPI, DRATF refurbishment, and A-SMGCS walkthroughs, progressive responses, local chat history, and three formatted PDF briefs.
 
 ## Run without installing anything
 
@@ -10,15 +10,15 @@ An offline edition of the NNIC Assist guided conversation demo. It contains the 
 4. Start a new conversation. Press **Tab** to fill the suggested question and **Enter** to send it.
 5. Follow the nine-turn walkthrough. Use each document card to open or download the PDF.
 
-Keep the reports folder beside index.html for the three PDF links. React, icons, styles, scripts and the chart are included in the HTML. After downloading, no internet, API key, Node.js, Python, installation, or local server is required. There are no external fonts or CDN requests at startup. GitHub Pages and the downloaded HTML both open in Guided demo. **Settings → Continue guided demo** returns to the local conversation. Only **Open hosted live chat** opens the hosted site, in a new tab. No demo messages are transferred.
+Keep the reports folder beside index.html for the three PDF links. React, icons, styles, scripts and the chart are included in the HTML. After downloading, no internet, API key, Node.js, Python, installation, or local server is required. There are no external fonts or CDN requests at startup. The downloaded HTML opens in Guided demo.
 
 If your computer associates HTML with another program, right-click the file and choose **Open with → Google Chrome / Microsoft Edge**. A mobile device can use **Use suggestion** instead of Tab. The button beside NNIC Assist shows or hides navigation. On a desktop, the browser remembers that preference when local storage is available.
 
-History is stored only in the browser where supported. Browsers may restrict localStorage or clipboard access for file:// pages. Moving the HTML file may start a separate history. You can still select and copy text manually and download the conversation. No conversations are stored in this repository.
+Guided history is saved locally in this browser where supported. Browsers may restrict localStorage or clipboard access for file:// pages. Moving the HTML file may start a separate history. You can still select and copy text manually and download the conversation. No conversations are stored in this repository.
 
 ## What this edition does
 
-This is a controlled, scripted walkthrough, not live AI or a connection to project systems. Project scenarios are presentation material, not verified current project records. The PDF cards open existing prepared briefs in the reports folder. No API calls or paid usage are enabled. There is no database or cloud sync.
+On GitHub Pages, Live AI uses the workspace login, shared CAAP Works references and shared request allowance. The backend keeps the OpenAI key and handles model calls. The live session and its conversations stay in tab memory and clear on refresh, sign-out, or tab close. The offline guided walkthrough includes prepared responses and PDF briefs.
 
 The guided chat also answers short public questions about CAAP and common aviation terms. It includes clickable official references and supports follow-up questions about air navigation and pilot licensing. Other questions receive a few relevant conversation options. The hosted Live AI can check public web sources. For a follow-up, the conversation remembers the last recognized project until you change topics.
 
@@ -40,7 +40,7 @@ Then reopen **index.html**. Once the dependencies are installed, rebuilding can 
 - `reports/`: PDF briefs linked from the demo
 - `build.mjs`: bundles the app into the Pages entry point
 
-The live hosted site remains at https://nnic-assist.mervyn27.chatgpt.site. This repository is an offline frontend edition, not an automatic deployment source for that site. Hosting integration, credentials, and server-side OpenAI code are intentionally excluded from this offline edition.
+The GitHub Pages frontend connects directly to the existing API at https://nnic-assist.mervyn27.chatgpt.site. Credentials, private references and model code belong on that server.
 
 ## Presentation flow
 
@@ -48,10 +48,8 @@ CAPPI status → checklist bar chart → PDF brief → DRATF progress → BOQ re
 
 ## GitHub Pages
 
-Open [NNIC Assist on GitHub Pages](https://mervyn15.github.io/nnic-assist/) to start the demo. No hosted-service check runs on startup. The second suggested CAPPI question displays a built-in bar chart of the 14 checklist items named in the walkthrough. The bars count checklist items, not project progress.
+Open [Live AI on GitHub Pages](https://mervyn15.github.io/nnic-assist/?mode=live) and sign in using the workspace account. The chat, settings and reference files open inside GitHub Pages. Select the mode beside NNIC Assist or under Settings to switch. The root entry point remembers a mode selected on this browser. Explicit mode links take precedence.
 
-The root `index.html` is the GitHub Pages entry point. `npm run build` updates this file. The previous standalone `NNIC-Assist-Offline.html` with embedded PDFs remains available; use `index.html` for the chart walkthrough.
+For presentations, use the [guided demo](https://mervyn15.github.io/nnic-assist/?mode=guided). The second CAPPI question shows a bar chart of 14 checklist items. Both HTML builds support the chart and all three PDF briefs.
 
-To publish when Pages is available for this repository: open Settings > Pages, choose Deploy from a branch, and select `main` with `/ (root)`. The site needs no API key or backend.
-
-The demo uses system fonts. The build checks CSS syntax and rejects external stylesheet dependencies.
+The repository publishes from the main branch root. Run the build before publishing source changes. Only the public HTTPS Pages origin can connect to the hosted API. Local HTML files open the offline guided workspace.

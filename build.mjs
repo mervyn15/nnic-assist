@@ -14,7 +14,7 @@ async function buildPage(filename, styles, reports) {
     platform:'browser', jsx:'automatic', minify:true, define,
   });
   const js = bundle.outputFiles[0].text.replace(/<\/script/gi,'<\\/script');
-  await writeFile(filename,`<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#ffffff"><title>NNIC Assist | Guided demo</title><style>${styles}</style></head><body><div id="root"></div><script>${js}</script></body></html>`);
+  await writeFile(filename,`<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#ffffff"><title>${reports?'NNIC Assist | Guided demo':'NNIC Assist'}</title><style>${styles}</style></head><body><div id="root"></div><script>${js}</script></body></html>`);
 }
 
 await buildPage('index.html',css);
