@@ -1,3 +1,5 @@
+import {publicDefinitionAnswer} from './public-references';
+
 export const script = [
  'What is the current status of CAPPI?',
  'Can you show the CAPPI coordination checklist as a bar chart?',
@@ -17,7 +19,7 @@ export const cappiChecklist = [
  {label:'Display',items:['current data','stale data','missing data']},
  {label:'Acceptance',items:['test cases','expected results','sign-off responsibilities']},
 ] as const;
-export type GuidedResult = {chart?:GuideChartId;content:string;guideNext:number;guideTopic:GuideTopic | null;pdf?:string;fileTitle?:string};
+export type GuidedResult = {guidePublicQuestion?:string;externalSources?:{title:string;url:string}[];externalSourceKind?:'catalog';chart?:GuideChartId;content:string;guideNext:number;guideTopic:GuideTopic | null;pdf?:string;fileTitle?:string};
 const files={cappi:'/reports/CAPPI_Project_Brief.pdf',dratf:'/reports/DRATF_Refurbishment_Brief.pdf',asmgcs:'/reports/ASMGCS_TOR_Review_Brief.pdf'};
 
 const projects: [GuideTopic, RegExp][] = [
@@ -40,7 +42,15 @@ function namedTopics(text:string) {
  return projects.filter(([,pattern])=>pattern.test(text)).map(([key])=>key);
 }
 
-export function guidedReply(question:string,previous:string,step:number):GuidedResult {
+export function guidedReply(question:string,previous:string,step:number,previousPublicQuestion=''):GuidedResult {
+ const publicAnswer = publicDefinitionAnswer(question,previousPublicQuestion);
+ if (publicAnswer) {
+   return {
+     content:publicAnswer.answer, externalSources:publicAnswer.externalSources, externalSourceKind:'catalog',
+     guidePublicQuestion:publicDefinitionAnswer(question) ? question : previousPublicQuestion,
+     guideNext:step, guideTopic:null,
+   };
+ }
  const q=question.toLowerCase().replace(/\bwhat['’]s\b/g,'what is').replace(/\bhow['’]s\b/g,'how is').replace(/['’]s\b/g,'').trim();
  const named=namedTopics(q);
  const prior=namedTopics(previous);
@@ -76,7 +86,7 @@ export function guidedReply(question:string,previous:string,step:number):GuidedR
    return {
      content:clarify
        ? 'Which project do you mean? The guided topics are CAPPI, DRATF site refurbishment, and the A-SMGCS TOR.'
-       : 'I don’t have a guided answer for that question. To check the project records, switch to Live AI and ask about the project or document by name.',
+       : 'I don’t have enough information to answer that here. I can give you a quick overview of CAAP, explain an aviation term like ATIS, or return to the project walkthrough. For another public topic, you can ask Live AI to check the web.',
      guideNext:step,guideTopic:null,
    };
  }

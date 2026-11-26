@@ -20,7 +20,7 @@ History is stored only in the browser where supported. Browsers may restrict loc
 
 This is a controlled, scripted walkthrough, not live AI or a connection to project systems. Project scenarios are presentation material, not verified current project records. The PDF cards open existing prepared briefs in the reports folder. No API calls or paid usage are enabled. There is no database or cloud sync.
 
-Questions outside the three guided topics get a message explaining how to check the records in live chat. For a follow-up, the conversation remembers the last recognized project until you change topics.
+The guided chat also answers short public questions about CAAP and common aviation terms. It includes clickable official references and supports follow-up questions about air navigation and pilot licensing. Other questions receive a few relevant conversation options. The hosted Live AI can check public web sources. For a follow-up, the conversation remembers the last recognized project until you change topics.
 
 ## Edit and rebuild (developers)
 

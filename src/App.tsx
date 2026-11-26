@@ -14,8 +14,28 @@ function LiveChatLink({onOffline}: {onOffline: () => void}) {
   </a>;
 }
 
-type Message={chart?:GuideChartId;role:'user'|'assistant';content:string;demo?:boolean;guideNext?:number;guideTopic?:GuideTopic|null;pdf?:string;fileTitle?:string};
+type Message={guidePublicQuestion?:string;externalSources?:{title:string;url:string}[];chart?:GuideChartId;role:'user'|'assistant';content:string;demo?:boolean;guideNext?:number;guideTopic?:GuideTopic|null;pdf?:string;fileTitle?:string};
 type Chat={id:string;title:string;messages:Message[];context:string};
+
+function safeSources(message: Message) {
+  return (Array.isArray(message.externalSources) ? message.externalSources : []).filter(source => {
+    try {
+      const url = new URL(source.url);
+      return typeof source.title === 'string' && url.protocol === 'https:' && !url.username && !url.password;
+    } catch { return false; }
+  });
+}
+
+function portableText(message: Message) {
+  return [message.content, ...safeSources(message).map(source => source.title + ' · ' + source.url)].join('\n');
+}
+
+function GuidedContent({message}: {message: Message}) {
+  const source = safeSources(message)[0];
+  if (!source) return <div className="message-text">{message.content}</div>;
+  const [before, after] = message.content.split('[public source]');
+  return <div className="message-text">{before}<a href={source.url} target="_blank" rel="noopener noreferrer">{source.title}</a>{after}</div>;
+}
 
 // Recover the topic of older saved chats from the actual questions asked.
 function conversationTopic(messages: Message[]): GuideTopic | null {
@@ -86,14 +106,14 @@ export default function Home(){
  let answer:Message;
  {
  const previousTopic=conversationTopic(messages);
- answer={role:'assistant',...guidedReply(value,previousTopic||'',guideStep),demo:true};
+ answer={role:'assistant',...guidedReply(value,previousTopic||'',guideStep,messages.at(-1)?.guidePublicQuestion),demo:true};
  controller.current=new AbortController();const signal=controller.current.signal;
  for(let n=0;n<answer.content.length;n+=55){if(signal.aborted)break;const partial={role:'assistant' as const,content:answer.content.slice(0,n+55),demo:true};setChats(cs=>cs.map(c=>c.id===id?{...c,messages:[...updated,partial]}:c));await new Promise(resolve=>setTimeout(resolve,22));}
  if(signal.aborted)answer={role:'assistant',content:'Response stopped. You can resend your question when ready.',demo:true,guideNext:guideStep,guideTopic:null};
  }
  setChats(cs=>cs.map(c=>c.id===id?{...c,messages:[...updated,answer]}:c));setBusy(false);controller.current=null;
  }
- function exportChat(){if(!current)return;const blob=new Blob([`# ${current.title}\n\n${messages.map(m=>`## ${m.role==='user'?'You':m.demo?'NNIC Assist':'NNIC Assist'}\n\n${m.content}`).join('\n\n')}`],{type:'text/markdown'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='nnic-assist-chat.md';a.click();URL.revokeObjectURL(a.href)}
+ function exportChat(){if(!current)return;const blob=new Blob([`# ${current.title}\n\n${messages.map(m=>`## ${m.role==='user'?'You':m.demo?'NNIC Assist':'NNIC Assist'}\n\n${portableText(m)}`).join('\n\n')}`],{type:'text/markdown'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='nnic-assist-chat.md';a.click();URL.revokeObjectURL(a.href)}
  const composer=<><div className="composer">{attachment&&<div className="attachment"><FileText size={14}/>{attachment.name}<button aria-label="Remove attachment" onClick={()=>setAttachment(null)}><X size={14}/></button></div>}<textarea ref={editor} aria-label="Message NNIC Assist" placeholder={busy?'Preparing your response…':suggestion} disabled={busy} aria-describedby="composer-help" value={input} maxLength={10000} onChange={e=>setInput(e.target.value)} onKeyDown={e=>{if(e.key==='Tab'&&!e.shiftKey&&!input.trim()&&!busy&&guideStep<script.length){e.preventDefault();setInput(suggestion);return;}if(e.key==='Enter'&&!e.shiftKey&&!e.nativeEvent.isComposing){e.preventDefault();send()}}}/><div className="composer-bottom"><div><button className="icon-button" aria-label="Attach a text file" title="Attach .txt or .md (up to 8 KB)" onClick={()=>file.current?.click()}><Plus size={21}/></button></div><button className="send" aria-label={busy?'Stop response':'Send message'} disabled={!busy&&!input.trim()} onClick={()=>busy?controller.current?.abort():send()}>{busy?<span className="stop-square"/>:<ArrowUp size={20}/>}</button></div></div><div className="composer-caption" id="composer-help"><span>{guideStep<script.length?'Tab to fill · Enter to send':'Enter to send'}</span>{guideStep<script.length&&<button disabled={busy} onClick={()=>{setInput(suggestion);editor.current?.focus()}}>Use suggestion <ArrowUpRight size={12}/></button>}</div></>;
  return <div className={navOpen?'app':'app nav-closed'}><input ref={file} type="file" accept=".txt,.md,text/plain,text/markdown" hidden onChange={async e=>{const f=e.target.files?.[0];e.target.value='';if(!f)return;if(!/\.(txt|md)$/i.test(f.name)||f.size>8000){setToast('Choose a .txt or .md file up to 8 KB.');return;}setAttachment({name:f.name,text:await f.text()});setView('chat');setToast('Note attached to your message. Guided replies are scripted.')}}/>
  {smallViewport&&sidebar&&<div className="scrim" aria-hidden="true" onClick={closeMobileMenu}/>}
@@ -103,7 +123,7 @@ export default function Home(){
  <div className="history">{chats.length>0&&<div className="nav-label">Chats</div>}{chats.map(c=><div key={c.id} className={active===c.id?'history-row active':'history-row'}><button disabled={busy} onClick={()=>{setActive(c.id);setContext(c.context||'CAAP Works');setAttachment(null);setInput('');setView('chat');setSidebar(false)}}><MessageSquare size={14}/><span>{c.title}</span></button><button disabled={busy} title="Delete conversation" aria-label={`Delete ${c.title}`} onClick={()=>{setChats(cs=>cs.filter(x=>x.id!==c.id));if(c.id===active)setActive('')}}><Trash2 size={13}/></button></div>)}</div>
  <div className="sidebar-bottom"><button className="nav-item" onClick={()=>{setView('settings');setSidebar(false)}}><Settings2 size={17}/> Settings</button></div></aside>
  <main inert={smallViewport&&sidebar}><header><div><button ref={menuToggle} className="navigation-toggle icon-button" aria-label={navOpen?'Hide navigation':'Show navigation'} aria-controls="workspace-navigation" aria-expanded={navOpen} title={navOpen?'Hide navigation':'Show navigation'} onClick={toggleNavigation}>{navOpen?<PanelLeftClose size={20}/>:<PanelLeftOpen size={20}/>}</button><strong>NNIC Assist</strong><span className="mode-label">Guided demo</span></div>{view==='chat'&&messages.length>0&&<button className="icon-button" title="New chat" aria-label="New chat" disabled={busy} onClick={newChat}><Plus size={20}/></button>}</header>
- {view==='chat'?<div className={messages.length?'chat-page has-messages':'chat-page'}>{messages.length===0?<div className="welcome"><h1>What can I help with?</h1>{composer}</div>:<><div className="conversation-top"><span>{current?.title}</span><button title="Download conversation" aria-label="Download conversation" onClick={exportChat}><Download size={17}/></button></div><div className="messages" aria-live="polite">{messages.map((m,i)=><article className={`message ${m.role}`} key={i}><div className="message-content"><div className="sr-only">{m.role==='user'?'You':'NNIC Assist'}</div><div className="message-text">{m.content}</div>{m.chart&&<GuidedChart chart={m.chart}/>}{m.pdf&&<div className="pdf-card"><div className="pdf-icon"><FileText size={25}/><small>PDF</small></div><div><strong>{m.fileTitle}</strong><small>Formatted project brief · PDF document</small><div><a href={pdfUrl(m.pdf)} target="_blank" rel="noreferrer">Open PDF <ArrowUpRight size={13}/></a><a href={pdfUrl(m.pdf)} download={m.pdf.split('/').pop()}><Download size={13}/> Download</a></div></div></div>}{m.role==='assistant'&&!busy&&<div className="response-actions"><button className="copy-response" onClick={()=>copy(m.content)}><Copy size={13}/> Copy response</button></div>}</div></article>)}{busy&&<div className="thinking"><span/> Preparing a response…</div>}<div ref={end}/></div><div className="chat-composer">{composer}</div></>}</div>:<section className="content-page">
+ {view==='chat'?<div className={messages.length?'chat-page has-messages':'chat-page'}>{messages.length===0?<div className="welcome"><h1>What can I help with?</h1>{composer}</div>:<><div className="conversation-top"><span>{current?.title}</span><button title="Download conversation" aria-label="Download conversation" onClick={exportChat}><Download size={17}/></button></div><div className="messages" aria-live="polite">{messages.map((m,i)=><article className={`message ${m.role}`} key={i}><div className="message-content"><div className="sr-only">{m.role==='user'?'You':'NNIC Assist'}</div><GuidedContent message={m}/>{m.chart&&<GuidedChart chart={m.chart}/>}{m.pdf&&<div className="pdf-card"><div className="pdf-icon"><FileText size={25}/><small>PDF</small></div><div><strong>{m.fileTitle}</strong><small>Formatted project brief · PDF document</small><div><a href={pdfUrl(m.pdf)} target="_blank" rel="noreferrer">Open PDF <ArrowUpRight size={13}/></a><a href={pdfUrl(m.pdf)} download={m.pdf.split('/').pop()}><Download size={13}/> Download</a></div></div></div>}{m.role==='assistant'&&!busy&&<div className="response-actions"><button className="copy-response" onClick={()=>copy(portableText(m))}><Copy size={13}/> Copy response</button></div>}</div></article>)}{busy&&<div className="thinking"><span/> Preparing a response…</div>}<div ref={end}/></div><div className="chat-composer">{composer}</div></>}</div>:<section className="content-page">
  {view==='prompts'&&<><h2>Prompt library</h2><div className="search"><Search size={18}/><input aria-label="Search prompts" placeholder="Find a prompt…" value={query} onChange={e=>setQuery(e.target.value)}/></div><div className="library-grid">{prompts.filter(p=>(p.title+p.description+p.category).toLowerCase().includes(query.toLowerCase())).map(p=>{const Icon=icons[p.icon as keyof typeof icons];return <div className="library-card" key={p.id}><Icon size={23}/><small>{p.category}</small><h3>{p.title}</h3><p>{p.prompt}</p><button onClick={()=>{newChat();setInput(p.prompt)}}>Use this prompt <ArrowRight size={16}/></button></div>})}</div>{!prompts.some(p=>(p.title+p.description+p.category).toLowerCase().includes(query.toLowerCase()))&&<p>No prompts match your search.</p>}</>}
  {view==='knowledge'&&<><h2>Reference files</h2><div className="upload-zone"><FolderOpen size={28}/><h3>Attach a text note</h3><p>Text or Markdown, up to 8 KB. Notes stay in this browser. The scripted demo does not analyze them.</p><button className="primary-button" onClick={()=>file.current?.click()}><Plus size={16}/>Choose a file</button></div></>}
  {view==='settings'&&<><h2>Settings</h2>
