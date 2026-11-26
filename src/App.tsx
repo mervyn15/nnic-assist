@@ -44,7 +44,7 @@ export default function Home(){
  const suggestion=script[guideStep]||'What would you like to revisit?';
  useEffect(()=>{try{const saved=JSON.parse(localStorage.getItem('nnic-assist-chats')||'[]');if(Array.isArray(saved))setChats(saved.filter(c=>typeof c.id==='string'&&typeof c.title==='string'&&Array.isArray(c.messages)&&c.messages.every((m:Message)=>['user','assistant'].includes(m.role)&&typeof m.content==='string')).slice(0,30));}catch{}setReady(true);},[]);
  useEffect(()=>{if(ready)try{localStorage.setItem('nnic-assist-chats',JSON.stringify(chats.slice(0,30)))}catch{setToast('Browser storage is full. This chat is available only while the page is open.')}},[chats,ready]);
- useEffect(()=>{end.current?.scrollIntoView({behavior:'smooth'})},[messages.length,busy]);
+ useEffect(()=>{(()=>{const list=end.current?.parentElement;if(list)list.scrollTo({top:list.scrollHeight,behavior:"smooth"})})()},[messages.length,busy]);
  useEffect(()=>{if(toast){const t=setTimeout(()=>setToast(''),4500);return()=>clearTimeout(t)}},[toast]);
  useEffect(()=>{if(!busy&&view==='chat')editor.current?.focus()},[busy,view,active]);
  useEffect(()=>{
