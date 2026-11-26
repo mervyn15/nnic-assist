@@ -2,7 +2,7 @@
 import {useEffect,useRef,useState} from 'react';
 import {ArrowUp,ArrowUpRight,Plus,MessageSquare,BookOpen,FolderOpen,Settings2,PanelLeftClose,PanelLeftOpen,ChevronDown,ArrowRight,FileText,Mail,ListChecks,ClipboardList,Copy,Check,X,Paperclip,Search,Sparkles,ShieldCheck,Trash2,Download,ExternalLink,Plane,Info} from 'lucide-react';
 import {prompts} from './lib/demo';
-import {script,guidedReply} from './lib/guided';
+import {script,guidedReply,type GuideTopic} from './lib/guided';
 import {pdfUrl} from './pdf-assets';
 import {hostedLiveChatUrl} from './lib/hosted-chat';
 
@@ -28,20 +28,69 @@ function LiveChatLink({modeButton = false, onOffline}: {modeButton?: boolean; on
   );
 }
 
-type Message={role:'user'|'assistant';content:string;demo?:boolean;guideNext?:number;pdf?:string;fileTitle?:string};
+type Message={role:'user'|'assistant';content:string;demo?:boolean;guideNext?:number;guideTopic?:GuideTopic|null;pdf?:string;fileTitle?:string};
 type Chat={id:string;title:string;messages:Message[];context:string};
+
+// Recover the topic of older saved chats from the actual questions asked.
+function conversationTopic(messages: Message[]): GuideTopic | null {
+  const latest = messages.at(-1);
+  if (latest?.role === 'assistant' && latest.guideTopic !== undefined) return latest.guideTopic;
+  let topic: GuideTopic | null = null;
+  for (const message of messages) {
+    if (message.role === 'user') topic = guidedReply(message.content.split('\n\nReference:')[0], topic || '', 0).guideTopic;
+    else if (message.guideTopic !== undefined) topic = message.guideTopic;
+  }
+  return topic;
+}
+
 const icons={brief:FileText,email:Mail,review:ListChecks,minutes:ClipboardList};
 export default function Home(){
  const [view,setView]=useState('chat'),[sidebar,setSidebar]=useState(false),[chats,setChats]=useState<Chat[]>([]),[active,setActive]=useState(''),[input,setInput]=useState(''),[context,setContext]=useState('CAAP Works'),[busy,setBusy]=useState(false),[live,setLive]=useState(false),[toast,setToast]=useState(''),[query,setQuery]=useState(''),[attachment,setAttachment]=useState<{name:string;text:string}|null>(null),[ready,setReady]=useState(false);
+ const [smallViewport,setSmallViewport]=useState(()=>window.matchMedia?.('(max-width: 850px)').matches ?? window.innerWidth<=850);
+ const [collapsed,setCollapsed]=useState(()=>{try{return localStorage.getItem('nnic-assist-nav-collapsed')==='true'}catch{return false}});
+ const navigation=useRef<HTMLElement>(null), menuToggle=useRef<HTMLButtonElement>(null), closeButton=useRef<HTMLButtonElement>(null);
+ const navOpen=smallViewport?sidebar:!collapsed;
  const end=useRef<HTMLDivElement>(null),file=useRef<HTMLInputElement>(null),editor=useRef<HTMLTextAreaElement>(null),controller=useRef<AbortController|null>(null);
  const current=chats.find(c=>c.id===active),messages=current?.messages||[];
- const guideStep=[...messages].reverse().find(m=>m.guideNext!==undefined)?.guideNext||0;
+ const lastGuide=[...messages].reverse().find(m=>m.guideNext!==undefined);
+ const nextStep=lastGuide?.guideNext??0;
+ const guideStep=lastGuide?.guideTopic===null && nextStep%3===1 ? nextStep-1 : nextStep;
  const suggestion=script[guideStep]||'What would you like to revisit?';
  useEffect(()=>{try{const saved=JSON.parse(localStorage.getItem('nnic-assist-chats')||'[]');if(Array.isArray(saved))setChats(saved.filter(c=>typeof c.id==='string'&&typeof c.title==='string'&&Array.isArray(c.messages)&&c.messages.every((m:Message)=>['user','assistant'].includes(m.role)&&typeof m.content==='string')).slice(0,30));}catch{}setReady(true);setLive(false);},[]);
  useEffect(()=>{if(ready)try{localStorage.setItem('nnic-assist-chats',JSON.stringify(chats.slice(0,30)))}catch{setToast('Browser storage is full. This chat is available only while the page is open.')}},[chats,ready]);
  useEffect(()=>{end.current?.scrollIntoView({behavior:'smooth'})},[messages.length,busy]);
  useEffect(()=>{if(toast){const t=setTimeout(()=>setToast(''),4500);return()=>clearTimeout(t)}},[toast]);
  useEffect(()=>{if(!busy&&view==='chat')editor.current?.focus()},[busy,view,active]);
+ useEffect(()=>{
+   const media=window.matchMedia?.('(max-width: 850px)');
+   if(!media) return;
+   const sync=()=>{setSmallViewport(media.matches);setSidebar(false)};
+   media.addEventListener('change',sync);
+   return ()=>media.removeEventListener('change',sync);
+ },[]);
+ useEffect(()=>{
+   if(!smallViewport || !sidebar) return;
+   closeButton.current?.focus();
+   const onKey=(event:KeyboardEvent)=>{
+     if(event.key==='Escape'){event.preventDefault();closeMobileMenu();return;}
+     if(event.key!=='Tab') return;
+     const buttons=navigation.current?.querySelectorAll<HTMLButtonElement>('button:not([disabled])');
+     if(!buttons?.length) return;
+     const first=buttons[0],last=buttons[buttons.length-1];
+     if(event.shiftKey && document.activeElement===first){event.preventDefault();last.focus();}
+     if(!event.shiftKey && document.activeElement===last){event.preventDefault();first.focus();}
+   };
+   document.addEventListener('keydown',onKey);
+   return ()=>{document.removeEventListener('keydown',onKey);menuToggle.current?.focus()};
+ },[sidebar,smallViewport]);
+ function closeMobileMenu(){
+   setSidebar(false);
+ }
+ function toggleNavigation(){
+   if(smallViewport){setSidebar(open=>!open);return;}
+   setCollapsed(!collapsed);
+   try{localStorage.setItem('nnic-assist-nav-collapsed',String(!collapsed));}catch{}
+ }
  function showOfflineNotice() {
    setToast('Live chat needs an internet connection. You can continue the guided demo here.');
  }
@@ -50,24 +99,26 @@ export default function Home(){
  function handoff(){const history=messages.map(m=>`${m.role==='user'?'Me':'Prototype sample'}: ${m.content}`).join('\n\n');return `You are helping NNIC with ${context}. Use clear, professional language. Do not invent project facts or document references. Treat prototype examples as templates, not verified facts.\n\n${history}\n\n${input}${attachment?`\n\nAttached reference (${attachment.name}):\n${attachment.text}`:''}`}
  async function send(value=input){if(!value.trim()||busy)return;const content=value.trim()+(attachment?`\n\nReference: ${attachment.name}\n${attachment.text}`:'');if(content.length>14000){setToast('Please shorten the message and attachment to 14,000 characters.');return;}let id=active||(globalThis.crypto?.randomUUID?.()||('chat-'+Date.now()+'-'+Math.random().toString(36).slice(2)));const updated=[...messages,{role:'user' as const,content}];setChats(cs=>active?cs.map(c=>c.id===id?{...c,messages:updated}:c):[{id,title:value.slice(0,48),messages:updated,context},...cs].slice(0,30));setActive(id);setView('chat');setInput('');setAttachment(null);setBusy(true);
  let answer:Message;
- if(!live){const previous=[...messages].reverse().find(m=>m.role==='user'&&/cappi|dratf|refurbish|a[ -]?smgcs/i.test(m.content))?.content||'';const supported=/cappi|dratf|refurbish|a[ -]?smgcs|status|progress|resolve|before|next|action|concern|risk|focus|boq|evidence|vendor|clarif|need|pdf|summary|brief|report|document|file|review|thank/i.test(value);answer=supported?{role:'assistant',...guidedReply(value,previous,guideStep),demo:true}:{role:'assistant',content:'Let’s keep this walkthrough focused on CAPPI, DRATF refurbishment, and the A-SMGCS review. You can ask for an update, explore the open items, or prepare a PDF brief.',demo:true,guideNext:guideStep};
+ if(!live){
+ const previousTopic=conversationTopic(messages);
+ answer={role:'assistant',...guidedReply(value,previousTopic||'',guideStep),demo:true};
  controller.current=new AbortController();const signal=controller.current.signal;
  for(let n=0;n<answer.content.length;n+=55){if(signal.aborted)break;const partial={role:'assistant' as const,content:answer.content.slice(0,n+55),demo:true};setChats(cs=>cs.map(c=>c.id===id?{...c,messages:[...updated,partial]}:c));await new Promise(resolve=>setTimeout(resolve,22));}
- if(signal.aborted)answer={role:'assistant',content:'Response stopped. You can resend your question when ready.',demo:true,guideNext:guideStep};
+ if(signal.aborted)answer={role:'assistant',content:'Response stopped. You can resend your question when ready.',demo:true,guideNext:guideStep,guideTopic:null};
  }
  else{answer={role:'assistant',content:'This offline edition uses the guided conversation.',demo:true};}
  setChats(cs=>cs.map(c=>c.id===id?{...c,messages:[...updated,answer]}:c));setBusy(false);controller.current=null;
  }
  function exportChat(){if(!current)return;const blob=new Blob([`# ${current.title}\n\n${messages.map(m=>`## ${m.role==='user'?'You':m.demo?'NNIC Assist':'NNIC Assist'}\n\n${m.content}`).join('\n\n')}`],{type:'text/markdown'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='nnic-assist-chat.md';a.click();URL.revokeObjectURL(a.href)}
  const composer=<><div className="composer">{attachment&&<div className="attachment"><FileText size={14}/>{attachment.name}<button aria-label="Remove attachment" onClick={()=>setAttachment(null)}><X size={14}/></button></div>}<textarea ref={editor} aria-label="Message NNIC Assist" placeholder={busy?'Preparing your response…':suggestion} disabled={busy} aria-describedby="composer-help" value={input} maxLength={10000} onChange={e=>setInput(e.target.value)} onKeyDown={e=>{if(e.key==='Tab'&&!e.shiftKey&&!input.trim()&&!busy&&guideStep<script.length){e.preventDefault();setInput(suggestion);return;}if(e.key==='Enter'&&!e.shiftKey&&!e.nativeEvent.isComposing){e.preventDefault();send()}}}/><div className="composer-bottom"><div><button className="icon-button" aria-label="Attach a text file" title="Attach .txt or .md (up to 8 KB)" onClick={()=>file.current?.click()}><Paperclip size={19}/></button><span className="composer-divider"/><label className="context-select"><FolderOpen size={15}/><select aria-label="Work context" disabled={messages.length>0} value={context} onChange={e=>setContext(e.target.value)}><option>CAAP Works</option><option>General NNIC</option><option>Project coordination</option></select><ChevronDown size={13}/></label></div><button className="send" aria-label={busy?'Stop response':'Send message'} disabled={!busy&&!input.trim()} onClick={()=>busy?controller.current?.abort():send()}>{busy?<span className="stop-square"/>:<ArrowUp size={20}/>}</button></div></div><div className="composer-caption" id="composer-help"><span>{live?'AI can make mistakes. Verify important information.':'Tab to use the suggestion · Enter to send · Shift+Enter for a new line'}</span>{!live&&guideStep<script.length&&<button disabled={busy} onClick={()=>{setInput(suggestion);editor.current?.focus()}}>Use suggestion <ArrowUpRight size={12}/></button>}</div></>;
- return <div className="app"><input ref={file} type="file" accept=".txt,.md,text/plain,text/markdown" hidden onChange={async e=>{const f=e.target.files?.[0];e.target.value='';if(!f)return;if(!/\.(txt|md)$/i.test(f.name)||f.size>8000){setToast('Choose a .txt or .md file up to 8 KB.');return;}setAttachment({name:f.name,text:await f.text()});setView('chat');setToast(live?'Reference attached. It will be sent with your next message.':'Attached for your ChatGPT prompt. Demo mode does not analyze files.')}}/>
- {sidebar&&<div className="scrim" onClick={()=>setSidebar(false)}/>}
- <aside className={sidebar?'sidebar open':'sidebar'}><div className="brand"><div className="brand-mark">N<span><ArrowUpRight size={18}/></span></div><span>NNIC <b>Assist</b><small>YOUR WORK, CONNECTED.</small></span><button className="mobile-close" aria-label="Close menu" onClick={()=>setSidebar(false)}><PanelLeftClose size={19}/></button></div>
+ return <div className={navOpen?'app':'app nav-closed'}><input ref={file} type="file" accept=".txt,.md,text/plain,text/markdown" hidden onChange={async e=>{const f=e.target.files?.[0];e.target.value='';if(!f)return;if(!/\.(txt|md)$/i.test(f.name)||f.size>8000){setToast('Choose a .txt or .md file up to 8 KB.');return;}setAttachment({name:f.name,text:await f.text()});setView('chat');setToast(live?'Reference attached. It will be sent with your next message.':'Attached for your ChatGPT prompt. Demo mode does not analyze files.')}}/>
+ {smallViewport&&sidebar&&<div className="scrim" aria-hidden="true" onClick={closeMobileMenu}/>}
+ <aside id="workspace-navigation" ref={navigation} className={sidebar?'sidebar open':'sidebar'} hidden={!navOpen} role={smallViewport&&sidebar?'dialog':undefined} aria-modal={smallViewport&&sidebar?true:undefined} aria-label="Workspace navigation"><div className="brand"><div className="brand-mark">N<span><ArrowUpRight size={18}/></span></div><span>NNIC <b>Assist</b><small>YOUR WORK, CONNECTED.</small></span><button ref={closeButton} className="mobile-close" aria-label="Close navigation" aria-controls="workspace-navigation" aria-expanded={navOpen} onClick={closeMobileMenu}><PanelLeftClose size={19}/></button></div>
  <button className="new-chat" disabled={busy} onClick={newChat}><Plus size={18}/> New conversation <span><ArrowUpRight size={16}/></span></button>
  <div className="nav-label">WORKSPACE</div><nav>{[{id:'chat',text:'Assistant',icon:MessageSquare},{id:'prompts',text:'Prompt library',icon:BookOpen},{id:'knowledge',text:'Reference files',icon:FolderOpen}].map(n=><button disabled={busy} key={n.id} className={view===n.id?'nav-item selected':'nav-item'} onClick={()=>{setView(n.id);setSidebar(false)}}><n.icon size={18}/>{n.text}{view===n.id&&<span className="nav-dot"/>}</button>)}</nav>
  <div className="history"><div className="nav-label">RECENT CONVERSATIONS <span>{chats.length?String(chats.length).padStart(2,'0'):''}</span></div>{chats.length===0?<div className="empty-history">A little more clarity,<br/>one conversation at a time.<span>Your chats will appear here.</span></div>:chats.map(c=><div key={c.id} className={active===c.id?'history-row active':'history-row'}><button disabled={busy} onClick={()=>{setActive(c.id);setContext(c.context||'CAAP Works');setAttachment(null);setInput('');setView('chat');setSidebar(false)}}><MessageSquare size={14}/><span>{c.title}</span></button><button disabled={busy} title="Delete conversation" aria-label={`Delete ${c.title}`} onClick={()=>{setChats(cs=>cs.filter(x=>x.id!==c.id));if(c.id===active)setActive('')}}><Trash2 size={13}/></button></div>)}</div>
- <div className="sidebar-bottom"><div className="pilot-card"><span className="pilot-icon"><Sparkles size={16}/></span><strong>Small start. Bigger possibilities.</strong><p>A concept workspace for better everyday work at NNIC.</p><button onClick={()=>setView('about')}>Explore the concept <ArrowUpRight size={14}/></button></div><button className="settings-link" onClick={()=>setView('settings')}><Settings2 size={17}/> Workspace settings</button><div className="profile"><div className="avatar">N</div><div>NNIC workspace<small>CAAP Works · Prototype</small></div><span className="profile-dot"/></div></div></aside>
- <main><header><div><button className="mobile-menu icon-button" aria-label="Open menu" onClick={()=>setSidebar(true)}><PanelLeftOpen size={20}/></button><span className="breadcrumb">Workspace</span><span className="slash">/</span><strong>{{chat:'Assistant',prompts:'Prompt library',knowledge:'Reference files',about:'The concept',settings:'Settings'}[view]}</strong></div><div className="header-right"><LiveChatLink modeButton onOffline={showOfflineNotice} /></div></header>
+ <div className="sidebar-bottom"><div className="pilot-card"><span className="pilot-icon"><Sparkles size={16}/></span><strong>Small start. Bigger possibilities.</strong><p>A concept workspace for better everyday work at NNIC.</p><button onClick={()=>{setView('about');setSidebar(false)}}>Explore the concept <ArrowUpRight size={14}/></button></div><button className="settings-link" onClick={()=>{setView('settings');setSidebar(false)}}><Settings2 size={17}/> Workspace settings</button><div className="profile"><div className="avatar">N</div><div>NNIC workspace<small>CAAP Works · Prototype</small></div><span className="profile-dot"/></div></div></aside>
+ <main inert={smallViewport&&sidebar}><header><div><button ref={menuToggle} className="navigation-toggle icon-button" aria-label={navOpen?'Hide navigation':'Show navigation'} aria-controls="workspace-navigation" aria-expanded={navOpen} title={navOpen?'Hide navigation':'Show navigation'} onClick={toggleNavigation}>{navOpen?<PanelLeftClose size={20}/>:<PanelLeftOpen size={20}/>}</button><span className="breadcrumb">Workspace</span><span className="slash">/</span><strong>{{chat:'Assistant',prompts:'Prompt library',knowledge:'Reference files',about:'The concept',settings:'Settings'}[view]}</strong></div><div className="header-right"><LiveChatLink modeButton onOffline={showOfflineNotice} /></div></header>
  {view==='chat'?<div className={messages.length?'chat-page has-messages':'chat-page'}>{messages.length===0?<div className="welcome"><div className="eyebrow"><span/> MADE FOR THE WAY YOU WORK</div><h1>A clearer way<br/>to move work <em>forward.</em></h1><p className="intro">Your thinking partner for projects, people, and the everyday.<br/>Type about CAPPI, DRATF refurbishment, or the A-SMGCS TOR.</p>{composer}<div className="suggestions-header"><span>EXPLORE A PROJECT</span><button onClick={()=>setView('prompts')}>View all prompts <ArrowRight size={14}/></button></div><div className="prompt-grid">{prompts.slice(0,4).map(p=>{const Icon=icons[p.icon as keyof typeof icons];return <button key={p.id} className="prompt-card" onClick={()=>{setInput(p.prompt);editor.current?.focus()}}><div><Icon size={20}/><ArrowUpRight size={16}/></div><strong>{p.title}</strong><p>{p.description}</p><small>{p.category}</small></button>})}</div><div className="welcome-note"><ShieldCheck size={14}/><span>Built around your work. Chats stay in this browser.</span></div></div>:<><div className="conversation-top"><span>{current?.title}</span><button title="Download conversation" aria-label="Download conversation" onClick={exportChat}><Download size={17}/></button></div><div className="messages" aria-live="polite">{messages.map((m,i)=><article className={`message ${m.role}`} key={i}>{m.role==='assistant'&&<div className="assistant-symbol">N</div>}<div className="message-content"><div className="message-name">{m.role==='user'?'You':'NNIC Assist'}</div><div className="message-text">{m.content}</div>{m.pdf&&<div className="pdf-card"><div className="pdf-icon"><FileText size={25}/><small>PDF</small></div><div><strong>{m.fileTitle}</strong><small>Formatted project brief · PDF document</small><div><a href={pdfUrl(m.pdf)} target="_blank" rel="noreferrer">Open PDF <ArrowUpRight size={13}/></a><a href={pdfUrl(m.pdf)} download={m.pdf.split('/').pop()}><Download size={13}/> Download</a></div></div></div>}{m.role==='assistant'&&!busy&&<div className="response-actions"><button className="copy-response" onClick={()=>copy(m.content)}><Copy size={13}/> Copy response</button></div>}</div></article>)}{busy&&<div className="thinking"><span/> Preparing a response…</div>}<div ref={end}/></div><div className="chat-composer">{composer}</div></>}</div>:<section className="content-page">
  {view==='prompts'&&<><div className="eyebrow">A GOOD QUESTION IS A GOOD START</div><h2>Your everyday toolkit.</h2><p className="page-lead">Useful starting points, tailored to CAAP Works. Make each one your own.</p><div className="search"><Search size={18}/><input aria-label="Search prompts" placeholder="Find a prompt…" value={query} onChange={e=>setQuery(e.target.value)}/></div><div className="library-grid">{prompts.filter(p=>(p.title+p.description+p.category).toLowerCase().includes(query.toLowerCase())).map(p=>{const Icon=icons[p.icon as keyof typeof icons];return <div className="library-card" key={p.id}><Icon size={23}/><small>{p.category}</small><h3>{p.title}</h3><p>{p.prompt}</p><button onClick={()=>{newChat();setInput(p.prompt)}}>Use this prompt <ArrowRight size={16}/></button></div>})}</div>{!prompts.some(p=>(p.title+p.description+p.category).toLowerCase().includes(query.toLowerCase()))&&<p>No prompts match your search.</p>}</>}
  {view==='knowledge'&&<><div className="eyebrow">GIVE YOUR CONVERSATION CONTEXT</div><h2>A place for your references.</h2><p className="page-lead">Attach text notes to a prompt. A shared, searchable NNIC document collection is a future phase.</p><div className="upload-zone"><FolderOpen size={36}/><h3>Bring a little context.</h3><p>Text and Markdown files, up to 8 KB per attachment.</p><button className="primary-button" onClick={()=>file.current?.click()}><Plus size={16}/> Choose a file</button><small>{live?'Attached content is sent to the AI when you submit your message.':'Demo mode does not read or analyze documents. Use Copy for ChatGPT to include attached text.'}</small></div><div className="info-box"><Info size={19}/><div><strong>No company document repository connected</strong><p>This site does not have access to your ChatGPT files, OneDrive, TORs, or project records. PDF, Word, and Excel ingestion is not included in this prototype.</p></div></div></>}

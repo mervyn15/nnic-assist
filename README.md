@@ -12,13 +12,15 @@ An offline edition of the NNIC Assist guided conversation demo. It contains the 
 
 The HTML already includes React, icons, styles, conversation scripts, and the PDFs. After downloading, no internet, API key, Node.js, Python, installation, or local server is required. There are no external fonts or CDN requests at startup. Select the **Guided demo** mode button in the header (or **Open live chat** in Workspace settings) to open the hosted NNIC Assist in a new tab when online. If your browser is offline, the button keeps you in the guided conversation. The hosted site handles sign-in and checks whether live chat is available. Opening it does not transfer your offline conversation.
 
-If your computer associates HTML with another program, right-click the file and choose **Open with → Google Chrome / Microsoft Edge**. A mobile device can use **Use suggestion** instead of Tab.
+If your computer associates HTML with another program, right-click the file and choose **Open with → Google Chrome / Microsoft Edge**. A mobile device can use **Use suggestion** instead of Tab. The button beside the Workspace breadcrumb shows or hides navigation. On a desktop, the browser remembers that preference when local storage is available.
 
 History is stored only in the browser where supported. Browsers may restrict localStorage or clipboard access for file:// pages. Moving the HTML file may start a separate history. You can still select and copy text manually and download the conversation. No conversations are stored in this repository.
 
 ## What this edition does
 
 This is a controlled, scripted walkthrough, not live AI or a connection to project systems. Project scenarios are presentation material, not verified current project records. PDF files are prepared documents embedded in the app. No API calls or paid usage are enabled. There is no database or cloud sync.
+
+Questions outside the three guided topics get a message explaining how to check the records in live chat. For a follow-up, the conversation remembers the last recognized project until you change topics.
 
 ## Edit and rebuild (developers)
 

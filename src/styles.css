@@ -14,3 +14,9 @@
 .startup-status { padding: 1.5rem; font-size: 0.9rem; }
 
 .status-pill.mode-switch{text-decoration:none}.status-pill.mode-switch:hover{border-color:#ad777e}
+
+.sidebar[hidden] { display: none; }
+.nav-closed main { margin-left: 0; }
+.navigation-toggle { padding: 8px; color: #657067; border-radius: 6px; }
+.navigation-toggle:hover { background: #f0efe8; }
+.navigation-toggle:focus-visible, .mobile-close:focus-visible { outline: 2px solid #9b3448; outline-offset: 2px; }
