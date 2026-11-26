@@ -10,7 +10,7 @@ An offline edition of the NNIC Assist guided conversation demo. It contains the 
 4. Start a new conversation. Press **Tab** to fill the suggested question and **Enter** to send it.
 5. Follow the nine-turn walkthrough. Use each document card to open or download the PDF.
 
-The HTML already includes React, icons, styles, conversation scripts, and the PDFs. After downloading, no internet, API key, Node.js, Python, installation, or local server is required. There are no external fonts or CDN requests at startup. The optional Open ChatGPT link requires internet.
+The HTML already includes React, icons, styles, conversation scripts, and the PDFs. After downloading, no internet, API key, Node.js, Python, installation, or local server is required. There are no external fonts or CDN requests at startup. Select **Open live chat** to open the hosted NNIC Assist in a new tab when online. The hosted site handles sign-in and checks whether live chat is available. Opening it does not transfer your offline conversation.
 
 If your computer associates HTML with another program, right-click the file and choose **Open with → Google Chrome / Microsoft Edge**. A mobile device can use **Use suggestion** instead of Tab.
 
